@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movement Labs · SMS Outreach Analysis</title>
+<style>
+:root{
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --surface-2:#f4f4f1;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  /* categorical */
+  --s1:#2a78d6; --s2:#008300; --s3:#e87ba4; --s4:#eda100; --s5:#1baf7a; --s6:#eb6834;
+  /* vendor roles */
+  --sinch:#2a78d6; --syniverse:#eb6834; --telnyx:#008300;
+  /* status */
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --good-ink:#006300;
+  --shadow:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+}
+html[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --s1:#3987e5; --s2:#008300; --s3:#d55181; --s4:#c98500; --s5:#199e70; --s6:#d95926;
+  --sinch:#3987e5; --syniverse:#d95926; --telnyx:#0ca30c;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --good-ink:#0ca30c;
+  --shadow:0 1px 3px rgba(0,0,0,0.4);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--plane);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px 80px}
+header.top{padding:36px 0 20px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--syniverse)}
+h1{font-size:30px;font-weight:700;letter-spacing:-.01em;margin:6px 0 8px}
+.sub{color:var(--ink-2);font-size:15px;max-width:760px}
+.meta{color:var(--muted);font-size:13px;margin-top:12px}
+.theme-btn{position:fixed;top:16px;right:16px;z-index:50;background:var(--surface);border:1px solid var(--border);color:var(--ink-2);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
+nav.jump{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--plane) 88%,transparent);backdrop-filter:blur(8px);display:flex;gap:4px;flex-wrap:wrap;padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border)}
+nav.jump a{font-size:12.5px;font-weight:600;color:var(--ink-2);text-decoration:none;padding:6px 11px;border-radius:7px}
+nav.jump a:hover{background:var(--surface-2);color:var(--ink)}
+section{margin-top:40px;scroll-margin-top:56px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+.sec-num{font-size:12px;font-weight:700;color:var(--syniverse);letter-spacing:.05em}
+h2{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.sec-desc{color:var(--ink-2);font-size:14px;margin:6px 0 20px;max-width:800px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.kpi .l{font-size:12px;color:var(--ink-2);font-weight:500}
+.kpi .v{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.01em}
+.kpi .h{font-size:12px;color:var(--muted);margin-top:2px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;margin-top:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+.card.full{grid-column:1/-1}
+.card h3{font-size:15px;font-weight:650}
+.card .csub{font-size:12.5px;color:var(--muted);margin:2px 0 14px}
+.insight{border-left:3px solid var(--s1);background:var(--surface-2);border-radius:0 8px 8px 0;padding:11px 14px;margin-top:14px;font-size:13px;color:var(--ink-2)}
+.insight b{color:var(--ink);font-weight:650}
+.insight.warn{border-left-color:var(--warning)}
+.insight.crit{border-left-color:var(--critical)}
+.insight.good{border-left-color:var(--good)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 12px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+.lkey{width:16px;height:2px;border-radius:2px;display:inline-block}
+svg{display:block;width:100%;overflow:visible}
+.ax{font-size:11px;fill:var(--muted)}
+.axlab{font-size:11px;fill:var(--ink-2)}
+.vlab{font-size:11px;fill:var(--ink);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th{text-align:right;padding:8px 10px;border-bottom:1.5px solid var(--axis);color:var(--ink-2);font-size:11.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;white-space:nowrap;user-select:none}
+th:first-child,td:first-child{text-align:left}
+td{padding:8px 10px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--surface-2)}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.pill.crit{background:color-mix(in srgb,var(--critical) 16%,transparent);color:var(--critical)}
+.pill.warn{background:color-mix(in srgb,var(--warning) 20%,transparent);color:#8a6300}
+html[data-theme="dark"] .pill.warn{color:var(--warning)}
+.pill.good{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good-ink)}
+.tabtog{font-size:11.5px;color:var(--muted);cursor:pointer;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;float:right;font-weight:600}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--plane);padding:7px 10px;border-radius:7px;font-size:12px;opacity:0;transition:opacity .1s;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:240px}
+.tip b{font-weight:700}
+.tip .row{display:flex;justify-content:space-between;gap:14px;font-variant-numeric:tabular-nums}
+.next{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:8px}
+.nc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.nc .n{font-size:12px;font-weight:700;color:var(--syniverse)}
+.nc h4{font-size:15px;font-weight:650;margin:4px 0 6px}
+.nc p{font-size:13px;color:var(--ink-2)}
+.foot{margin-top:48px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px}
+.hidden{display:none}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<button class="theme-btn" onclick="toggleTheme()">◐ Theme</button>
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">Movement Labs · Hiring Exercise</div>
+  <h1>SMS &amp; MMS Outreach — Program Analysis</h1>
+  <p class="sub">A read of ~18k message-sending "parts" across projects, waves, brands and aggregators. Focus: where the routing, brand, and instrumentation decisions actually live. Rates are volume-weighted (by contacts for reply/opt-out, by outgoing messages for delivery), so big sends count more than small ones.</p>
+  <div class="meta">Data span 2024-01-06 → 2026-06-08 · Sinch &amp; Syniverse are the two aggregators in focus · Telnyx and a small "fakeservice" set appear too</div>
+</header>
+
+<nav class="jump">
+  <a href="#overview">Overview</a>
+  <a href="#q1">Q1 · Vendors</a>
+  <a href="#q2">Q2 · Brands &amp; Depts</a>
+  <a href="#q3">Q3 · Other Signals</a>
+  <a href="#q4">Q4 · What&#39;s Next</a>
+</nav>
+
+<!-- OVERVIEW -->
+<section id="overview">
+  <div class="sec-head"><span class="sec-num">00</span><h2>The dataset at a glance</h2></div>
+  <p class="sec-desc">Projects contain waves; waves contain parts. Aggregator, delivery rate, and message counts live only at the part level, so all vendor analysis is built up from parts.</p>
+  <div class="kpis" id="kpiRow"></div>
+  <div class="grid2">
+    <div class="card full">
+      <h3>Monthly send volume</h3>
+      <div class="csub">Contacts messaged per month, all aggregators. One quarter (Oct–Nov 2024) dominates the entire history.</div>
+      <div id="volChart"></div>
+      <div class="insight"><b>Volume is extremely concentrated.</b> October 2024 alone (547M contacts) is ~1/3 of all outreach in the dataset. Any all-time average is really an average of that spike — another reason to weight and segment rather than trust headline means.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Q1 VENDORS -->
+<section id="q1">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Vendor performance — Sinch vs. Syniverse</h2></div>
+  <p class="sec-desc">The routing question: should more traffic go to Sinch or Syniverse? The honest answer requires separating <em>vendor effect</em> from <em>traffic mix</em> — the two vendors carry different programs, message types, and eras.</p>
+
+  <div class="insight crit" style="margin-bottom:18px"><b>Headline finding — we can't actually measure Syniverse deliverability.</b> Delivery rate is populated for 100% of Sinch, Telnyx and even test rows — but <b>0 of 3,703 Syniverse parts</b>. The single most important vendor metric is missing for one of the two vendors we're being asked to compare. Fixing this instrumentation gap should precede any routing decision.</div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Delivery data coverage by vendor</h3>
+      <div class="csub">Share of a vendor's sends that have <em>any</em> delivery figure recorded. This is a data-completeness flag — <b>not</b> how well the vendor delivers.</div>
+      <div id="covChart"></div>
+      <div class="insight warn"><b>Syniverse's "0%" = zero rows populated, not zero delivery.</b> All 3,703 Syniverse sends have a blank delivery field, so its actual deliverability is unmeasured here. Sinch/Telnyx at "100%" simply means the field is always filled. Syniverse likely isn't returning delivery receipts (DLRs) into the pipeline, or they aren't being captured — until fixed, its deliverability can only be inferred indirectly (via reply behavior).</div>
+    </div>
+    <div class="card">
+      <h3>Volume by vendor</h3>
+      <div class="csub">Total contacts messaged. Sinch carries ~2× Syniverse; the comparison is not balanced.</div>
+      <div id="volVendorChart"></div>
+      <div class="insight">Sinch 1.07B · Syniverse 500M · Telnyx 85M contacts. Sinch also skews toward reply-heavy Experiments and Auto-Responder traffic, which inflates its raw averages.</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Reply rate: raw average vs. like-for-like</h3>
+      <div class="csub">Raw looks like a 2× Sinch win. Matched on the same project + month + message type, the gap nearly vanishes.</div>
+      <div id="matchedChart"></div>
+      <div class="insight good"><b>The raw gap is mostly mix, not vendor.</b> Across the 101 tightly-matched cells (same project, month &amp; SMS/MMS), Sinch wins reply in only 48% of them; the volume-weighted edge is ~+0.9pp. At the brand level Sinch leads in 47 of 54 head-to-head brands (+1.8pp weighted). Real but modest — nothing like 2×.</div>
+    </div>
+    <div class="card">
+      <h3>SMS vs. MMS delivery — Sinch (Q1b)</h3>
+      <div class="csub">The only vendor with delivery data. MMS delivers materially worse than SMS.</div>
+      <div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Delivery</span><span><i class="swatch" style="background:var(--s2)"></i>Reply</span></div>
+      <div id="smsMmsChart"></div>
+      <div class="insight warn"><b>MMS is the weak spot.</b> Sinch SMS delivers 81% vs. MMS 73% (weighted); at the median part, SMS delivers ~100% vs. MMS ~86%. MMS also replies lower. If MMS volume grows, deliverability needs its own vendor test.</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Reply rate over time — convergence</h3>
+      <div class="csub">Syniverse onboarded Aug 2024 and started rough. The vendors are converging.</div>
+      <div class="legend"><span><i class="lkey" style="background:var(--sinch)"></i>Sinch</span><span><i class="lkey" style="background:var(--syniverse)"></i>Syniverse</span></div>
+      <div id="convChart"></div>
+      <div class="insight">Syniverse reply climbed from 1.0% (2024Q3) to ~4.6% (2026Q1), closing on Sinch. Early-period underperformance drags Syniverse's all-time average down and is partly a ramp artifact, not a permanent vendor gap.</div>
+    </div>
+    <div class="card">
+      <h3>Sinch delivery rate over time</h3>
+      <div class="csub">Weighted delivery per quarter. Early 2024 was rough; a 2025Q3 dip is worth a look.</div>
+      <div class="legend"><span><i class="lkey" style="background:var(--sinch)"></i>Sinch delivery</span></div>
+      <div id="delivTrendChart"></div>
+      <div class="insight warn">Delivery stabilized around ~90% after early-2024 ramp pains (37% → 67%), but dipped to 77% in 2025Q3. Worth checking whether that was a specific brand/campaign or a carrier-filtering event.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Q2 BRANDS -->
+<section id="q2">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Departments &amp; brands</h2></div>
+  <p class="sec-desc">10DLC brands carry reputation and use consistent send-from numbers, so a bad brand can quietly drag delivery. Two things stand out: reply rate is a department-level story, and a handful of high-volume brands have alarmingly low delivery.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Performance by department</h3>
+      <div class="csub">Delivery, reply and opt-out are volume-weighted. Experiments is the reply engine.</div>
+      <div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Delivery</span><span><i class="swatch" style="background:var(--s2)"></i>Reply</span><span><i class="swatch" style="background:var(--s4)"></i>Opt-out</span></div>
+      <div id="deptChart"></div>
+      <div class="insight"><b>Reply rate is set by department goal, not vendor.</b> Experiments replies at 6.6% and Contest Every Race at 5.5%, while Programs (largely broadcast) sits at 2.8%. Comparing reply rates across programs — or reading a low Programs reply as "bad" — would be a mistake.</div>
+    </div>
+    <div class="card">
+      <h3>Brand opt-out vs. delivery</h3>
+      <div class="csub">Each dot is a brand (≥500k contacts). Bottom-right = healthy. Top-left = watch.</div>
+      <div id="brandScatter"></div>
+      <div class="insight crit">A cluster of high-volume brands delivers below 50% — <b>B8OZ4TG (33%), BBDXYWT (36%), BY8DGCG (46% on 18M contacts)</b>. On 10DLC these low rates usually signal carrier filtering tied to brand/number reputation, not the message. These are the first numbers I'd escalate.</div>
+    </div>
+  </div>
+
+  <div class="card full">
+    <h3>Top brands by volume <button class="tabtog" onclick="toggleTbl('brandTblWrap')">Toggle table</button></h3>
+    <div class="csub">Sorted by contacts. Flags mark low delivery (&lt;60%) and elevated opt-out (&gt;5%). Click headers to sort.</div>
+    <div id="brandTblWrap"><div id="brandTbl"></div></div>
+  </div>
+</section>
+
+<!-- Q3 OTHER -->
+<section id="q3">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Other signals worth a decision</h2></div>
+  <p class="sec-desc">Two structural things jump out beyond the vendor head-to-head: an aggregator transition already underway, and how much texter model shapes outcomes.</p>
+
+  <div class="grid2">
+    <div class="card full">
+      <h3>Aggregator mix over time</h3>
+      <div class="csub">Monthly contacts by aggregator. A live migration story: Telnyx wound down, Syniverse ramped, Sinch stayed anchor.</div>
+      <div class="legend"><span><i class="swatch" style="background:var(--sinch)"></i>Sinch</span><span><i class="swatch" style="background:var(--syniverse)"></i>Syniverse</span><span><i class="swatch" style="background:var(--telnyx)"></i>Telnyx</span></div>
+      <div id="mixChart"></div>
+      <div class="insight"><b>Routing already shifted once.</b> Telnyx ran ~1M+/month through Jan 2025, then collapsed to negligible tails and effectively stopped; Syniverse spun up from Aug 2024 and now runs neck-and-neck with Sinch in recent months. Whatever drove the Telnyx exit (cost? deliverability? contract?) is exactly the kind of decision this analysis should inform going forward.</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Performance by texter model</h3>
+      <div class="csub">Volume-weighted. Auto Responder is nearly half of all volume and behaves differently.</div>
+      <div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Delivery</span><span><i class="swatch" style="background:var(--s2)"></i>Reply</span><span><i class="swatch" style="background:var(--s4)"></i>Opt-out</span></div>
+      <div id="texterChart"></div>
+      <div class="insight">Auto Responder (455M contacts) replies highest (5.9%) but delivers lowest (77%) — a very different profile from Volunteer sends. Vendor comparisons must hold texter type constant or Auto-Responder-heavy Sinch looks artificially strong.</div>
+    </div>
+    <div class="card">
+      <h3>Data quality notes &amp; why we weight</h3>
+      <div class="csub">Noise the "parts" table warned us about — and how the metrics here handle it.</div>
+      <div style="font-size:13.5px;color:var(--ink-2);line-height:1.7;margin-top:6px">
+        <p style="margin-bottom:10px">• <b>"100%" and "0%" single-send delivery are mostly a small-send artifact.</b> 34% of sends with delivery data sit at exactly 1.0 and 4% at exactly 0.0 — but those have a <b>median of 4 contacts</b>. On a 4-message send, delivery can only be 4/4 or 0/4; there's no room for a realistic 87%. Require ≥1,000 contacts and the pile-up vanishes: delivery becomes a smooth ~85–95% curve.</p>
+        <p style="margin-bottom:10px">• <b>This is exactly why every rate here is volume-weighted.</b> Averaging raw per-send rates would let thousands of 4-message test blips vote equally with an 8,000-contact real send — inflating Sinch's median to 98.6% vs. its honest message-weighted 79.5%. Weighting shrinks the tiny sends to near-zero influence.</p>
+        <p style="margin-bottom:10px">• <b>~5,600 parts have &lt;10 contacts</b> — tests and micro-sends, the source of the boundary pile-up above.</p>
+        <p style="margin-bottom:10px">• A <b>"fakeservice" aggregator</b> (32 parts, 773 contacts) is clearly test/canceled traffic — excluded from vendor rates here.</p>
+        <p>• Some brands show delivery <b>null even on Sinch</b> (e.g. BJAXM7M) — the DLR pipeline has gaps beyond just Syniverse.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Q4 NEXT -->
+<section id="q4">
+  <div class="sec-head"><span class="sec-num">04</span><h2>What I&#39;d do next</h2></div>
+  <p class="sec-desc">Where the juice is, in priority order — and the data or instrumentation I'd ask for first.</p>
+  <div class="next">
+    <div class="nc"><div class="n">01 · Fix first</div><h4>Get Syniverse delivery receipts flowing</h4><p>No routing call should be made while one vendor's deliverability is unmeasured. Confirm whether it's a Syniverse DLR gap or an ingestion gap on our side, then backfill.</p></div>
+    <div class="nc"><div class="n">02 · Test</div><h4>Run a real randomized split</h4><p>Same campaign, same list, randomize routing at the contact level across Sinch/Syniverse. That's the only way to turn "near-parity, slight Sinch edge" into a defensible number. Observational data can't.</p></div>
+    <div class="nc"><div class="n">03 · Investigate</div><h4>Escalate the sub-50% delivery brands</h4><p>B8OZ4TG, BBDXYWT, BY8DGCG and peers. Pull their send-from numbers and 10DLC registration status — likely carrier filtering on brand reputation, recoverable with number/brand hygiene.</p></div>
+    <div class="nc"><div class="n">04 · Instrument</div><h4>Add cost + carrier + error codes</h4><p>Routing is a cost×deliverability decision and we only see one side. I'd want per-message cost by vendor, destination carrier, and carrier error/violation codes to separate "not delivered" from "filtered."</p></div>
+    <div class="nc"><div class="n">05 · Dig</div><h4>Explain the 2025Q3 Sinch dip &amp; the Telnyx exit</h4><p>Both are decisions or events hiding in aggregate lines. Understanding why Telnyx was dropped tells us what "good" looked like when we last switched.</p></div>
+    <div class="nc"><div class="n">06 · Coordinate</div><h4>Standardize the metric definitions</h4><p>Reply rate means different things per program. I'd align with program owners on which metric is the goal per project so cross-program dashboards stop comparing apples to oranges.</p></div>
+  </div>
+</section>
+
+<div class="foot">
+  Built for the Movement Labs texting exercise · rates volume-weighted from the parts table · charts are interactive (hover for detail). Prepared as a starting point for discussion — happy to go deeper on any thread.
+</div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const DATA = {"overview":{"total_contacts":1652174354,"total_outgoing":1673002216,"total_incoming":71309644,"n_projects":2984,"n_waves":4189,"n_parts":18228,"n_brands":120,"n_departments":5,"date_min":"2024-01-06","date_max":"2026-06-08","overall_reply":0.03768,"overall_optout":0.03163,"overall_delivery":0.79899},"aggregators":[{"aggregator":"sinch","parts":10708,"contacts":1067708387,"outgoing":1085756684,"delivery":0.79513,"reply":0.04564,"optout":0.03463,"delivery_coverage":1.0,"first":"2024-01","last":"2026-06"},{"aggregator":"syniverse","parts":3703,"contacts":499548848,"outgoing":500804810,"delivery":null,"reply":0.02038,"optout":0.02481,"delivery_coverage":0.0,"first":"2024-08","last":"2026-06"},{"aggregator":"telnyx","parts":3785,"contacts":84916346,"outgoing":86439934,"delivery":0.84754,"reply":0.03922,"optout":0.03408,"delivery_coverage":1.0,"first":"2024-01","last":"2026-02"},{"aggregator":"fakeservice","parts":32,"contacts":773,"outgoing":788,"delivery":0.0,"reply":0.25873,"optout":0.00129,"delivery_coverage":1.0,"first":"2024-01","last":"2024-04"}],"sms_mms":[{"aggregator":"sinch","msg_type":"MMS","contacts":240713784,"delivery":0.73045,"reply":0.04017,"optout":0.03736},{"aggregator":"sinch","msg_type":"SMS","contacts":826994603,"delivery":0.81379,"reply":0.04724,"optout":0.03384},{"aggregator":"syniverse","msg_type":"MMS","contacts":136655885,"delivery":null,"reply":0.0169,"optout":0.022},{"aggregator":"syniverse","msg_type":"SMS","contacts":362892963,"delivery":null,"reply":0.0217,"optout":0.02586}],"quarterly":[{"quarter":"2024Q1","sinch_contacts":12974356,"sinch_reply":0.01556,"sinch_delivery":0.37082,"syniverse_contacts":0,"syniverse_reply":null,"syniverse_delivery":null},{"quarter":"2024Q2","sinch_contacts":103731365,"sinch_reply":0.04562,"sinch_delivery":0.66609,"syniverse_contacts":0,"syniverse_reply":null,"syniverse_delivery":null},{"quarter":"2024Q3","sinch_contacts":314233523,"sinch_reply":0.03679,"sinch_delivery":0.69906,"syniverse_contacts":39042917,"syniverse_reply":0.00991,"syniverse_delivery":null},{"quarter":"2024Q4","sinch_contacts":406351759,"sinch_reply":0.04425,"sinch_delivery":0.86155,"syniverse_contacts":343435103,"syniverse_reply":0.01689,"syniverse_delivery":null},{"quarter":"2025Q1","sinch_contacts":64594132,"sinch_reply":0.07259,"sinch_delivery":0.9253,"syniverse_contacts":15172376,"syniverse_reply":0.02245,"syniverse_delivery":null},{"quarter":"2025Q2","sinch_contacts":8978279,"sinch_reply":0.10387,"sinch_delivery":0.90599,"syniverse_contacts":15794522,"syniverse_reply":0.02112,"syniverse_delivery":null},{"quarter":"2025Q3","sinch_contacts":26697383,"sinch_reply":0.07561,"sinch_delivery":0.77407,"syniverse_contacts":11562770,"syniverse_reply":0.03585,"syniverse_delivery":null},{"quarter":"2025Q4","sinch_contacts":59670515,"sinch_reply":0.04979,"sinch_delivery":0.89516,"syniverse_contacts":43448850,"syniverse_reply":0.0352,"syniverse_delivery":null},{"quarter":"2026Q1","sinch_contacts":36946622,"sinch_reply":0.05568,"sinch_delivery":0.89417,"syniverse_contacts":19465179,"syniverse_reply":0.04585,"syniverse_delivery":null},{"quarter":"2026Q2","sinch_contacts":33530453,"sinch_reply":0.0474,"sinch_delivery":0.90722,"syniverse_contacts":11627131,"syniverse_reply":0.04172,"syniverse_delivery":null}],"matched":{"n_cells":101,"sinch_wins":48,"weighted_diff":0.00866,"median_diff":-0.00021,"n_shared_projects":108},"departments":[{"department":"Experiments","parts":1246,"contacts":157288855,"delivery":0.91781,"reply":0.06642,"optout":0.04336},{"department":"Programs","parts":1534,"contacts":98619805,"delivery":0.8335,"reply":0.02792,"optout":0.02995},{"department":"Contest Every Race","parts":1755,"contacts":41233558,"delivery":0.87521,"reply":0.05469,"optout":0.04679},{"department":"Other","parts":378,"contacts":29761789,"delivery":0.92338,"reply":0.03669,"optout":0.03374},{"department":"Stop the Nominees","parts":17,"contacts":4072008,"delivery":0.78975,"reply":0.03763,"optout":0.03768}],"brands":[{"brand":"B5NOR5X","parts":152,"contacts":92065650,"delivery":0.88005,"reply":0.03412,"optout":0.03061,"department":"Stop the Nominees"},{"brand":"BGHXZAD","parts":173,"contacts":68133287,"delivery":0.94483,"reply":0.09683,"optout":0.05099,"department":"Experiments"},{"brand":"BPXYHUX","parts":571,"contacts":60992958,"delivery":0.776,"reply":0.03723,"optout":0.03335,"department":"Other"},{"brand":"B2VQD15","parts":114,"contacts":57434417,"delivery":0.86828,"reply":0.05642,"optout":0.05359,"department":"Unknown"},{"brand":"B7EZRG9","parts":1830,"contacts":51398001,"delivery":0.77276,"reply":0.05056,"optout":0.04096,"department":"Contest Every Race"},{"brand":"BZMMR88","parts":228,"contacts":40480089,"delivery":0.91525,"reply":0.1158,"optout":0.04158,"department":"Experiments"},{"brand":"BYBSX7C","parts":98,"contacts":36941197,"delivery":0.68722,"reply":0.02853,"optout":0.03589,"department":"Experiments"},{"brand":"BEL7FJK","parts":60,"contacts":34176993,"delivery":0.63309,"reply":0.02785,"optout":0.01539,"department":"Unknown"},{"brand":"BO62UFC","parts":165,"contacts":29598679,"delivery":0.76617,"reply":0.03909,"optout":0.04836,"department":"Experiments"},{"brand":"BOWPPOD","parts":60,"contacts":25926363,"delivery":0.74151,"reply":0.01911,"optout":0.014,"department":"Unknown"},{"brand":"BB8WF7Q","parts":193,"contacts":21928224,"delivery":0.87532,"reply":0.0202,"optout":0.02836,"department":"Experiments"},{"brand":"BSJ53GB","parts":159,"contacts":20660445,"delivery":0.68931,"reply":0.03365,"optout":0.02546,"department":"Unknown"},{"brand":"BYV1ZEW","parts":214,"contacts":19619661,"delivery":0.90926,"reply":0.03119,"optout":0.0299,"department":"Programs"},{"brand":"BRJLJAO","parts":70,"contacts":19037474,"delivery":0.91979,"reply":0.05029,"optout":0.0553,"department":"Experiments"},{"brand":"BY8DGCG","parts":83,"contacts":18185138,"delivery":0.46042,"reply":0.03232,"optout":0.01895,"department":"Programs"},{"brand":"B055NHC","parts":31,"contacts":17901293,"delivery":0.78604,"reply":0.01652,"optout":0.01261,"department":"Unknown"},{"brand":"BUYDZP1","parts":147,"contacts":16852709,"delivery":0.87516,"reply":0.02855,"optout":0.0322,"department":"Programs"},{"brand":"BUW0CTB","parts":132,"contacts":16476031,"delivery":0.89574,"reply":0.03758,"optout":0.04193,"department":"Programs"},{"brand":"BGOQTRZ","parts":79,"contacts":16421521,"delivery":0.81945,"reply":0.03405,"optout":0.04174,"department":"Programs"},{"brand":"B9UNY1Q","parts":163,"contacts":15731604,"delivery":0.93807,"reply":0.03105,"optout":0.04083,"department":"Experiments"},{"brand":"BN6P6MP","parts":201,"contacts":14743542,"delivery":0.92596,"reply":0.04716,"optout":0.04116,"department":"Experiments"},{"brand":"BQXGMES","parts":34,"contacts":14128766,"delivery":0.89817,"reply":0.03702,"optout":0.04197,"department":"Unknown"},{"brand":"BGOSWGX","parts":42,"contacts":12834057,"delivery":0.62855,"reply":0.02795,"optout":0.01648,"department":"Unknown"},{"brand":"BT4QEWW","parts":57,"contacts":12533273,"delivery":0.94259,"reply":0.03365,"optout":0.0352,"department":"Experiments"},{"brand":"BYLBC32","parts":109,"contacts":11906526,"delivery":0.95633,"reply":0.05516,"optout":0.06088,"department":"Experiments"},{"brand":"BH21TDV","parts":40,"contacts":11810192,"delivery":0.81805,"reply":0.06104,"optout":0.05836,"department":"Experiments"},{"brand":"BNBMZ8K","parts":17,"contacts":11513691,"delivery":0.80306,"reply":0.02493,"optout":0.02006,"department":"Unknown"},{"brand":"BXW9ME8","parts":15,"contacts":10034177,"delivery":0.78995,"reply":0.02832,"optout":0.01898,"department":"Unknown"},{"brand":"BHYDR5N","parts":74,"contacts":9942804,"delivery":0.63458,"reply":0.03588,"optout":0.01718,"department":"Unknown"},{"brand":"BAV963Y","parts":15,"contacts":8612582,"delivery":0.86051,"reply":0.09073,"optout":0.05776,"department":"Unknown"},{"brand":"BTNFNUJ","parts":113,"contacts":8024850,"delivery":0.91334,"reply":0.04319,"optout":0.04893,"department":"Experiments"},{"brand":"BBDXYWT","parts":14,"contacts":7981590,"delivery":0.35914,"reply":0.02481,"optout":0.01152,"department":"Unknown"},{"brand":"BV6TFTE","parts":18,"contacts":7929652,"delivery":0.62052,"reply":0.0345,"optout":0.01989,"department":"Unknown"},{"brand":"BL0WNF2","parts":19,"contacts":7826424,"delivery":0.68241,"reply":0.04367,"optout":0.03185,"department":"Programs"},{"brand":"B84H79X","parts":84,"contacts":7750514,"delivery":0.94977,"reply":0.03571,"optout":0.03796,"department":"Programs"},{"brand":"B1SC9GU","parts":13,"contacts":7661692,"delivery":0.57529,"reply":0.0376,"optout":0.02035,"department":"Unknown"},{"brand":"BOOAGTY","parts":23,"contacts":6383091,"delivery":0.69728,"reply":0.02321,"optout":0.01625,"department":"Unknown"},{"brand":"BBKZ9F5","parts":12,"contacts":6183499,"delivery":0.92093,"reply":0.05773,"optout":0.0535,"department":"Unknown"},{"brand":"B9YYJW4","parts":13,"contacts":6088063,"delivery":0.81092,"reply":0.05518,"optout":0.05203,"department":"Unknown"},{"brand":"BZIRDVR","parts":123,"contacts":5007901,"delivery":0.85598,"reply":0.03878,"optout":0.03944,"department":"Programs"},{"brand":"BJAXM7M","parts":22,"contacts":4966027,"delivery":null,"reply":0.01635,"optout":0.01615,"department":"Programs"},{"brand":"BJDA5Y4","parts":18,"contacts":4760231,"delivery":0.86365,"reply":0.02662,"optout":0.02936,"department":"Unknown"},{"brand":"BWPWAZF","parts":27,"contacts":4506680,"delivery":0.84566,"reply":0.0271,"optout":0.02972,"department":"Unknown"},{"brand":"BQZTQED","parts":52,"contacts":4248428,"delivery":0.77003,"reply":0.02008,"optout":0.01805,"department":"Programs"},{"brand":"BAHOQ4T","parts":221,"contacts":3929619,"delivery":0.88252,"reply":0.03075,"optout":0.02402,"department":"Programs"},{"brand":"BLT6LI1","parts":15,"contacts":3242103,"delivery":0.68056,"reply":0.01798,"optout":0.01507,"department":"Unknown"},{"brand":"B378KNH","parts":7,"contacts":2947325,"delivery":0.61952,"reply":0.01698,"optout":0.0139,"department":"Unknown"},{"brand":"BPNM3OD","parts":18,"contacts":2694004,"delivery":0.61451,"reply":0.01996,"optout":0.01741,"department":"Unknown"},{"brand":"BSA5AU5","parts":9,"contacts":2560908,"delivery":0.74104,"reply":0.02206,"optout":0.01733,"department":"Unknown"},{"brand":"BHED4GG","parts":19,"contacts":2265126,"delivery":0.6708,"reply":0.01406,"optout":0.0177,"department":"Unknown"},{"brand":"BZPBAHP","parts":23,"contacts":2228908,"delivery":0.81431,"reply":0.02024,"optout":0.01581,"department":"Unknown"},{"brand":"BNFKIIE","parts":7,"contacts":2150759,"delivery":0.54462,"reply":0.0161,"optout":0.01192,"department":"Unknown"},{"brand":"B4ERBYG","parts":12,"contacts":2100381,"delivery":0.57384,"reply":0.02625,"optout":0.01365,"department":"Unknown"},{"brand":"BVTAESM","parts":16,"contacts":2008892,"delivery":0.80978,"reply":0.02624,"optout":0.02422,"department":"Programs"},{"brand":"B1M5LR0","parts":35,"contacts":1938079,"delivery":0.6299,"reply":0.01431,"optout":0.02485,"department":"Experiments"},{"brand":"BHGI7AT","parts":8,"contacts":1716708,"delivery":0.67743,"reply":0.03091,"optout":0.03007,"department":"Unknown"},{"brand":"B8OZ4TG","parts":4,"contacts":1614811,"delivery":0.33204,"reply":0.0052,"optout":0.00522,"department":"Unknown"},{"brand":"BCQF5WB","parts":13,"contacts":1515156,"delivery":0.69684,"reply":0.0218,"optout":0.01907,"department":"Unknown"},{"brand":"B5GUFOF","parts":24,"contacts":1491166,"delivery":0.86802,"reply":0.04019,"optout":0.03802,"department":"Programs"},{"brand":"B1SUGV9","parts":14,"contacts":1447714,"delivery":0.72083,"reply":0.01349,"optout":0.01691,"department":"Unknown"},{"brand":"BJQWMC0","parts":39,"contacts":1363782,"delivery":0.43963,"reply":0.007,"optout":0.00878,"department":"Programs"},{"brand":"BTZLOV6","parts":9,"contacts":1275109,"delivery":0.46113,"reply":0.01557,"optout":0.01424,"department":"Unknown"},{"brand":"B0PDVKW","parts":12,"contacts":1070552,"delivery":0.95753,"reply":0.01808,"optout":0.01921,"department":"Programs"},{"brand":"B6GIFV1","parts":1,"contacts":916147,"delivery":0.85593,"reply":0.02483,"optout":0.02196,"department":"Unknown"},{"brand":"BZHZ5HQ","parts":6,"contacts":889544,"delivery":0.80417,"reply":0.01379,"optout":0.02528,"department":"Unknown"},{"brand":"BIV8PJH","parts":3,"contacts":879025,"delivery":0.89816,"reply":0.02609,"optout":0.02441,"department":"Programs"},{"brand":"B4J9SPL","parts":51,"contacts":824351,"delivery":0.71967,"reply":0.00847,"optout":0.00708,"department":"Programs"},{"brand":"B8SZ9MP","parts":2,"contacts":609127,"delivery":0.82554,"reply":0.06128,"optout":0.0565,"department":"Unknown"},{"brand":"BHVHSXT","parts":11,"contacts":606262,"delivery":0.93202,"reply":0.06174,"optout":0.08835,"department":"Experiments"},{"brand":"BT88TU3","parts":6,"contacts":566406,"delivery":0.37699,"reply":0.01733,"optout":0.02746,"department":"Programs"},{"brand":"B4HC8UA","parts":40,"contacts":527921,"delivery":0.24841,"reply":0.06451,"optout":0.06472,"department":"Programs"}],"monthly":[{"month":"2024-01","contacts":13850137,"reply":0.04988},{"month":"2024-02","contacts":10855522,"reply":0.03444},{"month":"2024-03","contacts":18094350,"reply":0.02644},{"month":"2024-04","contacts":15465708,"reply":0.04438},{"month":"2024-05","contacts":26067953,"reply":0.07834},{"month":"2024-06","contacts":74970867,"reply":0.03324},{"month":"2024-07","contacts":158644182,"reply":0.03557},{"month":"2024-08","contacts":63815659,"reply":0.04486},{"month":"2024-09","contacts":157094647,"reply":0.02595},{"month":"2024-10","contacts":547488792,"reply":0.0288},{"month":"2024-11","contacts":195582587,"reply":0.03813},{"month":"2024-12","contacts":21429281,"reply":0.06557},{"month":"2025-01","contacts":25627702,"reply":0.07449},{"month":"2025-02","contacts":22297223,"reply":0.05545},{"month":"2025-03","contacts":33050425,"reply":0.05756},{"month":"2025-04","contacts":4584601,"reply":0.08042},{"month":"2025-05","contacts":5980383,"reply":0.09926},{"month":"2025-06","contacts":14325417,"reply":0.02121},{"month":"2025-07","contacts":15911995,"reply":0.05615},{"month":"2025-08","contacts":6857576,"reply":0.05556},{"month":"2025-09","contacts":15490582,"reply":0.07481},{"month":"2025-10","contacts":49799229,"reply":0.04628},{"month":"2025-11","contacts":48395114,"reply":0.0394},{"month":"2025-12","contacts":4925022,"reply":0.05854},{"month":"2026-01","contacts":13316163,"reply":0.07093},{"month":"2026-02","contacts":19515833,"reply":0.05435},{"month":"2026-03","contacts":23579820,"reply":0.04005},{"month":"2026-04","contacts":21156878,"reply":0.05026},{"month":"2026-05","contacts":21367555,"reply":0.03753},{"month":"2026-06","contacts":2633151,"reply":0.07949}],"agg_monthly":[{"month":"2024-01","sinch":3327274,"syniverse":0,"telnyx":10522837},{"month":"2024-02","sinch":1481029,"syniverse":0,"telnyx":9373792},{"month":"2024-03","sinch":8166053,"syniverse":0,"telnyx":9928297},{"month":"2024-04","sinch":10175652,"syniverse":0,"telnyx":5290010},{"month":"2024-05","sinch":24128435,"syniverse":0,"telnyx":1939518},{"month":"2024-06","sinch":69427278,"syniverse":0,"telnyx":5543589},{"month":"2024-07","sinch":151320688,"syniverse":0,"telnyx":7323494},{"month":"2024-08","sinch":56724481,"syniverse":227493,"telnyx":6863685},{"month":"2024-09","sinch":106188354,"syniverse":38815424,"telnyx":12090869},{"month":"2024-10","sinch":249088053,"syniverse":290943440,"telnyx":7457299},{"month":"2024-11","sinch":136795601,"syniverse":52491663,"telnyx":6295323},{"month":"2024-12","sinch":20468105,"syniverse":0,"telnyx":961176},{"month":"2025-01","sinch":24535769,"syniverse":0,"telnyx":1091933},{"month":"2025-02","sinch":20890100,"syniverse":1355329,"telnyx":51794},{"month":"2025-03","sinch":19168263,"syniverse":13817047,"telnyx":65115},{"month":"2025-04","sinch":1965214,"syniverse":2501787,"telnyx":117600},{"month":"2025-05","sinch":4155230,"syniverse":1825153,"telnyx":0},{"month":"2025-06","sinch":2857835,"syniverse":11467582,"telnyx":0},{"month":"2025-07","sinch":14693997,"syniverse":1217998,"telnyx":0},{"month":"2025-08","sinch":2445581,"syniverse":4411995,"telnyx":0},{"month":"2025-09","sinch":9557805,"syniverse":5932777,"telnyx":0},{"month":"2025-10","sinch":33132065,"syniverse":16667164,"telnyx":0},{"month":"2025-11","sinch":22587855,"syniverse":25807259,"telnyx":0},{"month":"2025-12","sinch":3950595,"syniverse":974427,"telnyx":0},{"month":"2026-01","sinch":10346213,"syniverse":2969950,"telnyx":0},{"month":"2026-02","sinch":11906805,"syniverse":7609013,"telnyx":15},{"month":"2026-03","sinch":14693604,"syniverse":8886216,"telnyx":0},{"month":"2026-04","sinch":13211475,"syniverse":7945403,"telnyx":0},{"month":"2026-05","sinch":18279432,"syniverse":3088123,"telnyx":0},{"month":"2026-06","sinch":2039546,"syniverse":593605,"telnyx":0}],"texter_types":[{"texter_type":"Volunteers","contacts":592603477,"parts":5546,"delivery":0.84005,"reply":0.03435,"optout":0.03512},{"texter_type":"Auto Responder","contacts":454553733,"parts":1007,"delivery":0.77039,"reply":0.05859,"optout":0.03383},{"texter_type":"Paid Texters","contacts":68867657,"parts":1028,"delivery":0.87739,"reply":0.04027,"optout":0.03483},{"texter_type":"None Needed!","contacts":26668239,"parts":246,"delivery":0.92136,"reply":0.05359,"optout":0.04981},{"texter_type":"Their Texters","contacts":5559598,"parts":64,"delivery":0.88106,"reply":0.03277,"optout":0.03022}]};
+const $=id=>document.getElementById(id);
+const tip=$('tip');
+const cs=()=>getComputedStyle(document.documentElement);
+function col(v){return cs().getPropertyValue('--'+v).trim();}
+const fmtN=n=>n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':(''+Math.round(n));
+const fmtPct=(n,d=1)=>n==null?'—':(n*100).toFixed(d)+'%';
+const fmtFull=n=>n.toLocaleString('en-US');
+
+function showTip(html,e){tip.innerHTML=html;tip.style.opacity=1;moveTip(e);}
+function moveTip(e){const p=8;let x=e.clientX+14,y=e.clientY+14;const r=tip.getBoundingClientRect();if(x+r.width>innerWidth-p)x=e.clientX-r.width-14;if(y+r.height>innerHeight-p)y=e.clientY-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px';}
+function hideTip(){tip.style.opacity=0;}
+
+const NS='http://www.w3.org/2000/svg';
+function svg(w,h){const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox',`0 0 ${w} ${h}`);s.setAttribute('preserveAspectRatio','xMidYMid meet');return s;}
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function txt(x,y,s,cls,anchor){const t=el('text',{x,y,class:cls||'ax'});if(anchor)t.setAttribute('text-anchor',anchor);t.textContent=s;return t;}
+
+// ---------- KPIs ----------
+function kpis(){
+  const o=DATA.overview;
+  const items=[
+    ['Contacts messaged',fmtN(o.total_contacts),fmtFull(o.total_contacts)],
+    ['Outgoing messages',fmtN(o.total_outgoing),'incl. multi-part segments'],
+    ['Projects · waves · parts',o.n_projects.toLocaleString()+' · '+o.n_waves.toLocaleString(),o.n_parts.toLocaleString()+' parts'],
+    ['10DLC brands',o.n_brands,'across '+o.n_departments+' departments'],
+    ['Overall reply rate',fmtPct(o.overall_reply),'volume-weighted'],
+    ['Overall opt-out rate',fmtPct(o.overall_optout),'volume-weighted'],
+  ];
+  $('kpiRow').innerHTML=items.map(i=>`<div class="kpi"><div class="l">${i[0]}</div><div class="v">${i[1]}</div><div class="h">${i[2]}</div></div>`).join('');
+}
+
+// ---------- horizontal bars ----------
+function hbars(id,rows,opt){
+  opt=opt||{};const W=opt.w||460,rh=34,padL=opt.padL||120,padR=64,padT=8,padB=8;
+  const H=padT+padB+rows.length*rh;const s=svg(W,H);
+  const max=opt.max||Math.max(...rows.map(r=>r.v))*1.02;
+  const x0=padL,x1=W-padR;
+  rows.forEach((r,i)=>{
+    const y=padT+i*rh+rh/2;
+    s.appendChild(txt(padL-10,y+4,r.label,'axlab','end'));
+    const bw=Math.max(2,(x1-x0)*(r.v/max));
+    const c=r.color||col('s1');
+    const bar=el('rect',{x:x0,y:y-9,width:bw,height:18,rx:4,fill:c});
+    bar.style.cursor='pointer';
+    bar.addEventListener('pointermove',e=>showTip(`<b>${r.label}</b><div class="row"><span>${opt.vlabel||'Value'}</span><span>${r.disp||r.v}</span></div>${r.sub?`<div class="row"><span>${r.sub[0]}</span><span>${r.sub[1]}</span></div>`:''}`,e));
+    bar.addEventListener('pointerleave',hideTip);
+    s.appendChild(bar);
+    s.appendChild(txt(x0+bw+8,y+4,r.disp!=null?r.disp:r.v,'vlab','start'));
+  });
+  $(id).innerHTML='';$(id).appendChild(s);
+}
+
+// ---------- grouped bars ----------
+function grouped(id,cats,series,opt){
+  opt=opt||{};const W=opt.w||460,H=opt.h||260,padL=44,padR=12,padT=14,padB=44;
+  const s=svg(W,H);const x0=padL,x1=W-padR,y0=padT,y1=H-padB;
+  const max=opt.max||Math.max(...cats.flatMap((c,ci)=>series.map(se=>se.get(c,ci)||0)))*1.12;
+  // gridlines
+  const ticks=opt.pct?[0,.25,.5,.75,1].map(t=>t*max):[0,max/2,max];
+  const nt=opt.pct?5:3;
+  for(let i=0;i<=nt-1;i++){const tv=max*i/(nt-1);const y=y1-(y1-y0)*(tv/max);
+    s.appendChild(el('line',{x1:x0,y1:y,x2:x1,y2:y,stroke:col('grid'),'stroke-width':1}));
+    s.appendChild(txt(x0-6,y+4,opt.pct?(tv*100).toFixed(0)+'%':fmtN(tv),'ax','end'));}
+  const bandW=(x1-x0)/cats.length;const inner=bandW*0.62;const bw=inner/series.length;
+  cats.forEach((c,ci)=>{
+    const bx=x0+ci*bandW+(bandW-inner)/2;
+    series.forEach((se,si)=>{
+      const v=se.get(c,ci)||0;const bh=(y1-y0)*(v/max);
+      const x=bx+si*bw;
+      const bar=el('rect',{x:x+1,y:y1-bh,width:Math.max(1,bw-2),height:Math.max(0,bh),rx:3,fill:se.color});
+      bar.style.cursor='pointer';
+      bar.addEventListener('pointermove',e=>showTip(`<b>${c}</b><div class="row"><span>${se.name}</span><span>${opt.pct?fmtPct(v):fmtN(v)}</span></div>`,e));
+      bar.addEventListener('pointerleave',hideTip);
+      s.appendChild(bar);
+    });
+    const lbl=txt(x0+ci*bandW+bandW/2,y1+16,c,'axlab','middle');
+    if(opt.rot){lbl.setAttribute('transform',`rotate(12 ${x0+ci*bandW+bandW/2} ${y1+16})`);lbl.setAttribute('text-anchor','start');}
+    s.appendChild(lbl);
+  });
+  $(id).innerHTML='';$(id).appendChild(s);
+}
+
+// ---------- multi-line ----------
+function lines(id,labels,series,opt){
+  opt=opt||{};const W=opt.w||460,H=opt.h||260,padL=46,padR=54,padT=16,padB=38;
+  const s=svg(W,H);const x0=padL,x1=W-padR,y0=padT,y1=H-padB;
+  const allv=series.flatMap(se=>se.data.filter(v=>v!=null));
+  const max=opt.max||Math.max(...allv)*1.1;const min=0;
+  const X=i=>x0+(x1-x0)*(i/(labels.length-1));
+  const Y=v=>y1-(y1-y0)*((v-min)/(max-min));
+  for(let i=0;i<=4;i++){const tv=max*i/4;const y=Y(tv);
+    s.appendChild(el('line',{x1:x0,y1:y,x2:x1,y2:y,stroke:col('grid'),'stroke-width':1}));
+    s.appendChild(txt(x0-6,y+4,opt.pct?(tv*100).toFixed(0)+'%':fmtN(tv),'ax','end'));}
+  labels.forEach((l,i)=>{if(i%opt.skip===0||i===labels.length-1)s.appendChild(txt(X(i),y1+16,l,'ax','middle'));});
+  series.forEach(se=>{
+    let d='';let started=false;
+    se.data.forEach((v,i)=>{if(v==null){return;}d+=(started?'L':'M')+X(i)+' '+Y(v)+' ';started=true;});
+    s.appendChild(el('path',{d,fill:'none',stroke:se.color,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'}));
+    se.data.forEach((v,i)=>{if(v==null)return;
+      const c=el('circle',{cx:X(i),cy:Y(v),r:3.2,fill:se.color,stroke:col('surface'),'stroke-width':2});
+      const hit=el('circle',{cx:X(i),cy:Y(v),r:12,fill:'transparent'});hit.style.cursor='pointer';
+      hit.addEventListener('pointermove',e=>showTip(`<b>${labels[i]}</b><div class="row"><span>${se.name}</span><span>${opt.pct?fmtPct(v,2):fmtN(v)}</span></div>`,e));
+      hit.addEventListener('pointerleave',hideTip);
+      s.appendChild(c);s.appendChild(hit);});
+    // end label
+    const li=se.data.length-1;const lv=se.data[li];
+    if(lv!=null&&opt.endlab)s.appendChild(txt(X(li)+8,Y(lv)+4,se.name,'vlab','start'));
+  });
+  $(id).innerHTML='';$(id).appendChild(s);
+}
+
+// ---------- stacked area ----------
+function stackArea(id,labels,series,opt){
+  opt=opt||{};const W=opt.w||960,H=opt.h||300,padL=48,padR=12,padT=16,padB=40;
+  const s=svg(W,H);const x0=padL,x1=W-padR,y0=padT,y1=H-padB;
+  const totals=labels.map((_,i)=>series.reduce((a,se)=>a+(se.data[i]||0),0));
+  const max=Math.max(...totals)*1.05;
+  const X=i=>x0+(x1-x0)*(i/(labels.length-1));
+  const Y=v=>y1-(y1-y0)*(v/max);
+  for(let i=0;i<=4;i++){const tv=max*i/4;const y=Y(tv);
+    s.appendChild(el('line',{x1:x0,y1:y,x2:x1,y2:y,stroke:col('grid'),'stroke-width':1}));
+    s.appendChild(txt(x0-6,y+4,fmtN(tv),'ax','end'));}
+  labels.forEach((l,i)=>{if(i%opt.skip===0||i===labels.length-1)s.appendChild(txt(X(i),y1+16,l.slice(2),'ax','middle'));});
+  const cum=labels.map(()=>0);
+  series.forEach(se=>{
+    let top='',bot='';
+    labels.forEach((_,i)=>{const b=cum[i];const t=cum[i]+(se.data[i]||0);top+=(i?'L':'M')+X(i)+' '+Y(t)+' ';});
+    for(let i=labels.length-1;i>=0;i--){bot+='L'+X(i)+' '+Y(cum[i])+' ';}
+    s.appendChild(el('path',{d:top+bot+'Z',fill:se.color,'fill-opacity':0.85,stroke:col('surface'),'stroke-width':0.5}));
+    labels.forEach((_,i)=>cum[i]+=(se.data[i]||0));
+  });
+  // hover overlay per month
+  labels.forEach((l,i)=>{
+    const bw=(x1-x0)/labels.length;
+    const rect=el('rect',{x:X(i)-bw/2,y:y0,width:bw,height:y1-y0,fill:'transparent'});rect.style.cursor='pointer';
+    rect.addEventListener('pointermove',e=>{
+      const rows=series.map(se=>`<div class="row"><span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${se.color};margin-right:5px"></i>${se.name}</span><span>${fmtN(se.data[i]||0)}</span></div>`).join('');
+      showTip(`<b>${l}</b>${rows}<div class="row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span>Total</span><span>${fmtN(totals[i])}</span></div>`,e);
+    });
+    rect.addEventListener('pointerleave',hideTip);
+    s.appendChild(rect);
+  });
+  $(id).innerHTML='';$(id).appendChild(s);
+}
+
+// ---------- scatter ----------
+function scatter(id,pts,opt){
+  opt=opt||{};const W=opt.w||460,H=opt.h||300,padL=48,padR=16,padT=16,padB=44;
+  const s=svg(W,H);const x0=padL,x1=W-padR,y0=padT,y1=H-padB;
+  const xmax=1,ymax=Math.max(...pts.map(p=>p.y))*1.1;
+  const X=v=>x0+(x1-x0)*(v/xmax);const Y=v=>y1-(y1-y0)*(v/ymax);
+  // grid x
+  [0,.25,.5,.75,1].forEach(t=>{s.appendChild(el('line',{x1:X(t),y1:y0,x2:X(t),y2:y1,stroke:col('grid'),'stroke-width':1}));s.appendChild(txt(X(t),y1+16,(t*100)+'%','ax','middle'));});
+  [0,.25,.5,.75,1].forEach(t=>{const v=ymax*t;s.appendChild(el('line',{x1:x0,y1:Y(v),x2:x1,y2:Y(v),stroke:col('grid'),'stroke-width':1}));s.appendChild(txt(x0-6,Y(v)+4,(v*100).toFixed(0)+'%','ax','end'));});
+  s.appendChild(txt((x0+x1)/2,H-6,'Delivery rate →','axlab','middle'));
+  const yl=txt(14,(y0+y1)/2,'Opt-out rate →','axlab','middle');yl.setAttribute('transform',`rotate(-90 14 ${(y0+y1)/2})`);s.appendChild(yl);
+  pts.forEach(p=>{
+    const r=Math.max(3.5,Math.min(16,Math.sqrt(p.size)/2200));
+    const bad=p.x<0.6;
+    const c=bad?col('critical'):p.y>0.05?col('warning'):col('s1');
+    const dot=el('circle',{cx:X(p.x),cy:Y(p.y),r,fill:c,'fill-opacity':0.55,stroke:c,'stroke-width':1.4});
+    dot.style.cursor='pointer';
+    const hit=el('circle',{cx:X(p.x),cy:Y(p.y),r:Math.max(r,13),fill:'transparent'});hit.style.cursor='pointer';
+    const h=e=>showTip(`<b>${p.label}</b> · ${p.dept}<div class="row"><span>Contacts</span><span>${fmtN(p.size)}</span></div><div class="row"><span>Delivery</span><span>${fmtPct(p.x)}</span></div><div class="row"><span>Opt-out</span><span>${fmtPct(p.y,2)}</span></div><div class="row"><span>Reply</span><span>${fmtPct(p.reply,2)}</span></div>`,e);
+    hit.addEventListener('pointermove',h);hit.addEventListener('pointerleave',hideTip);
+    s.appendChild(dot);s.appendChild(hit);
+  });
+  $(id).innerHTML='';$(id).appendChild(s);
+}
+
+// ---------- brand table ----------
+let tblSort={col:'contacts',dir:-1};
+function brandTable(){
+  const cols=[['brand','Brand'],['department','Department'],['contacts','Contacts'],['delivery','Delivery'],['reply','Reply'],['optout','Opt-out'],['flag','Flags']];
+  const rows=DATA.brands.slice(0,30);
+  rows.sort((a,b)=>{const c=tblSort.col;let av=a[c],bv=b[c];if(c==='flag'){av=flagScore(a);bv=flagScore(b);}if(av==null)av=-1;if(bv==null)bv=-1;return (av<bv?-1:av>bv?1:0)*tblSort.dir;});
+  let h='<table><thead><tr>'+cols.map(c=>`<th onclick="setSort('${c[0]}')">${c[1]}${tblSort.col===c[0]?(tblSort.dir<0?' ▼':' ▲'):''}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+='<tr>'+
+      `<td>${r.brand}</td>`+
+      `<td style="color:var(--ink-2)">${r.department}</td>`+
+      `<td>${fmtN(r.contacts)}</td>`+
+      `<td>${r.delivery==null?'<span style="color:var(--muted)">no data</span>':fmtPct(r.delivery)}</td>`+
+      `<td>${fmtPct(r.reply,1)}</td>`+
+      `<td>${fmtPct(r.optout,1)}</td>`+
+      `<td>${flagHtml(r)}</td>`+
+    '</tr>';
+  });
+  h+='</tbody></table>';
+  $('brandTbl').innerHTML=h;
+}
+function flagScore(r){let s=0;if(r.delivery!=null&&r.delivery<0.6)s+=2;if(r.optout>0.05)s+=1;return s;}
+function flagHtml(r){let p=[];if(r.delivery!=null&&r.delivery<0.6)p.push('<span class="pill crit">low delivery</span>');if(r.optout>0.05)p.push('<span class="pill warn">high opt-out</span>');if(!p.length)p.push('<span class="pill good">ok</span>');return p.join(' ');}
+function setSort(c){if(tblSort.col===c)tblSort.dir*=-1;else{tblSort.col=c;tblSort.dir=-1;}brandTable();}
+function toggleTbl(id){$(id).classList.toggle('hidden');}
+
+// ---------- render all ----------
+function renderAll(){
+  kpis();
+  // monthly volume area (single series -> reuse stackArea w/ 1 series)
+  const mv=DATA.monthly;
+  stackArea('volChart',mv.map(m=>m.month),[{name:'Contacts',color:col('s1'),data:mv.map(m=>m.contacts)}],{w:1080,h:230,skip:3});
+  // coverage
+  hbars('covChart',DATA.aggregators.filter(a=>a.aggregator!=='fakeservice').map(a=>({label:a.aggregator[0].toUpperCase()+a.aggregator.slice(1),v:a.delivery_coverage,disp:fmtPct(a.delivery_coverage,0),color:a.delivery_coverage>0?col(a.aggregator):col('critical')})),{max:1,vlabel:'Coverage',padL:90,w:430});
+  // volume by vendor
+  const av=DATA.aggregators.filter(a=>a.aggregator!=='fakeservice');
+  hbars('volVendorChart',av.map(a=>({label:a.aggregator[0].toUpperCase()+a.aggregator.slice(1),v:a.contacts,disp:fmtN(a.contacts),color:col(a.aggregator),sub:['Parts',a.parts.toLocaleString()]})),{vlabel:'Contacts',padL:90,w:430});
+  // matched reply
+  const sin=DATA.aggregators.find(a=>a.aggregator==='sinch'),syn=DATA.aggregators.find(a=>a.aggregator==='syniverse');
+  hbars('matchedChart',[
+    {label:'Sinch (raw)',v:sin.reply,disp:fmtPct(sin.reply),color:col('sinch')},
+    {label:'Syniverse (raw)',v:syn.reply,disp:fmtPct(syn.reply),color:col('syniverse')},
+    {label:'Sinch edge (matched)',v:DATA.matched.weighted_diff,disp:'+'+fmtPct(DATA.matched.weighted_diff,1),color:col('s2')},
+  ],{max:0.05,vlabel:'Reply rate',padL:140,w:440});
+  // sms vs mms delivery (sinch) + reply both
+  const sm=DATA.sms_mms;
+  const get=(a,t,f)=>{const r=sm.find(x=>x.aggregator===a&&x.msg_type===t);return r?r[f]:null;};
+  grouped('smsMmsChart',['SMS','MMS'],[
+    {name:'Delivery (Sinch)',color:col('s1'),get:c=>get('sinch',c,'delivery')},
+    {name:'Reply (Sinch)',color:col('s2'),get:c=>get('sinch',c,'reply')},
+  ],{pct:true,max:1,w:430,h:250});
+  // convergence lines
+  const q=DATA.quarterly;
+  lines('convChart',q.map(x=>x.quarter.replace('20','’')),[
+    {name:'Sinch',color:col('sinch'),data:q.map(x=>x.sinch_reply)},
+    {name:'Syniverse',color:col('syniverse'),data:q.map(x=>x.syniverse_reply)},
+  ],{pct:true,skip:2,w:460,h:250,max:0.11});
+  // sinch delivery trend
+  lines('delivTrendChart',q.map(x=>x.quarter.replace('20','’')),[
+    {name:'Delivery',color:col('sinch'),data:q.map(x=>x.sinch_delivery)},
+  ],{pct:true,skip:2,w:460,h:250,max:1});
+  // department grouped
+  const dep=DATA.departments;
+  grouped('deptChart',dep.map(d=>d.department.replace('Contest Every Race','Contest').replace('Stop the Nominees','Stop Nom.')),[
+    {name:'Delivery',color:col('s1'),get:(c,i)=>dep[i].delivery},
+    {name:'Reply',color:col('s2'),get:(c,i)=>dep[i].reply},
+    {name:'Opt-out',color:col('s4'),get:(c,i)=>dep[i].optout},
+  ],{pct:true,max:1,w:470,h:260,rot:true});
+  // brand scatter
+  scatter('brandScatter',DATA.brands.filter(b=>b.delivery!=null).map(b=>({label:b.brand,dept:b.department,x:b.delivery,y:b.optout,reply:b.reply,size:b.contacts})),{w:470,h:300});
+  brandTable();
+  // aggregator mix stacked
+  const am=DATA.agg_monthly;
+  stackArea('mixChart',am.map(m=>m.month),[
+    {name:'Sinch',color:col('sinch'),data:am.map(m=>m.sinch)},
+    {name:'Syniverse',color:col('syniverse'),data:am.map(m=>m.syniverse)},
+    {name:'Telnyx',color:col('telnyx'),data:am.map(m=>m.telnyx)},
+  ],{w:1080,h:300,skip:3});
+  // texter types
+  const tt=DATA.texter_types;
+  grouped('texterChart',tt.map(t=>t.texter_type.replace('!','').replace('Auto Responder','Auto').replace('None Needed','None').replace('Their Texters','Their').replace('Paid Texters','Paid')),[
+    {name:'Delivery',color:col('s1'),get:(c,i)=>tt[i].delivery},
+    {name:'Reply',color:col('s2'),get:(c,i)=>tt[i].reply},
+    {name:'Opt-out',color:col('s4'),get:(c,i)=>tt[i].optout},
+  ],{pct:true,max:1,w:470,h:260,rot:true});
+}
+function toggleTheme(){const h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'light':'dark');renderAll();}
+renderAll();
+</script>
+</body>
+</html>
